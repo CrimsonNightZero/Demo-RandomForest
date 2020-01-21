@@ -40,6 +40,12 @@ def normalize(data, data_key):
         data[key] = preprocessing.scale(data[key])
     return data
 
+def Ticket_process(data):
+    new = list()
+    for x in data:
+        new.append(x.split(" ")[-1])
+    return pd.DataFrame(new)
+
 # 資料預處理
 def data_processing(titanic_train, titanic_test):
     titanic_train["Age"] = fill_values(titanic_train["Age"])
@@ -48,18 +54,25 @@ def data_processing(titanic_train, titanic_test):
     titanic_train["Sex"] = value_encoder(titanic_train["Sex"])
     titanic_test["Sex"] = value_encoder(titanic_test["Sex"])
     
-    titanic_train["Embarked"] = np.where(titanic_train["Embarked"].isnull(), "S", titanic_train["Embarked"])
-    titanic_test["Embarked"] = np.where(titanic_test["Embarked"].isnull(), "S", titanic_test["Embarked"])
+    titanic_train["Cabin"] = np.where(titanic_train["Cabin"].isnull(), 0, 1)
+    titanic_test["Cabin"] = np.where(titanic_test["Cabin"].isnull(), 0, 1)
+    
+    titanic_train["Embarked"] = np.where(titanic_train["Embarked"].isnull(), "N", titanic_train["Embarked"])
+    titanic_test["Embarked"] = np.where(titanic_test["Embarked"].isnull(), "N", titanic_test["Embarked"])
     
     titanic_train["Embarked"] = value_encoder(titanic_train["Embarked"])
     titanic_test["Embarked"] = value_encoder(titanic_test["Embarked"])
-  
-    titanic_test["Fare"] = np.where(titanic_test["Fare"].isnull(), 0, titanic_test["Fare"])
     
+    titanic_train["Ticket"] = Ticket_process(titanic_train["Ticket"])
+    titanic_test["Ticket"] = Ticket_process(titanic_test["Ticket"])
+    
+    titanic_train["Ticket"] = titanic_train["Ticket"].str.replace("LINE", "0")
+ 
+    titanic_test["Fare"] = fill_values(titanic_test["Fare"])
     # print(np.isnan(titanic_test["Fare"]).sum())
     # print(np.isnan(titanic_test["Fare"]).sum())
-    titanic_train = normalize(titanic_train, ["Embarked", "Fare", "Pclass", "Age", "Parch", "SibSp"])
-    titanic_test = normalize(titanic_test, ["Embarked", "Fare", "Pclass", "Age", "Parch", "SibSp"])
+    titanic_train = normalize(titanic_train, ["Fare", "Pclass", "Age", "Parch", "SibSp", "Ticket"])
+    titanic_test = normalize(titanic_test, ["Fare", "Pclass", "Age", "Parch", "SibSp", "Ticket"])
     
     return titanic_train, titanic_test
 
@@ -68,15 +81,23 @@ def data_split(titanic_train, titanic_test):
     titanic_X = pd.DataFrame([titanic_train["Pclass"],
                              titanic_train["Sex"],
                              titanic_train["Age"],
-                             titanic_train["Fare"],
-                             titanic_train["Embarked"]
+                              titanic_train["Fare"],
+                              titanic_train["Embarked"],
+                              titanic_train["Cabin"],
+                               titanic_train["Parch"],
+                              titanic_train["SibSp"],
+                              titanic_train["Ticket"]
     ]).T   
                      
     titanic_test_X = pd.DataFrame([titanic_test["Pclass"],
                              titanic_test["Sex"],
                              titanic_test["Age"],
                              titanic_test["Fare"],
-                             titanic_test["Embarked"]
+                              titanic_test["Embarked"],
+                             titanic_test["Cabin"],
+                              titanic_test["Parch"],
+                              titanic_test["SibSp"],
+                             titanic_test["Ticket"]
     ]).T
     
     titanic_Y = titanic_train["Survived"]
@@ -84,7 +105,7 @@ def data_split(titanic_train, titanic_test):
     return titanic_X, titanic_Y, titanic_test_X
 
 # 建立隨機生成樹模型
-def RandomForestmodel(titanic_X, titanic_Y):
+def RandomForestmodel(titanic_X, titanic_Y, titanic_test_X):
     forest = ensemble.RandomForestClassifier(n_estimators = 200,
                                   min_samples_split = 20,
                                   min_samples_leaf = 1,
@@ -108,10 +129,11 @@ def output_file(test_y_predicted):
 
 if __name__ == '__main__':
     titanic_train, titanic_test, submit = loading_data()
+    
     titanic_train, titanic_test = data_processing(titanic_train, titanic_test)
     
     titanic_X, titanic_Y, titanic_test_X = data_split(titanic_train, titanic_test)
-    forest_fit, test_y_predicted = RandomForestmodel(titanic_X, titanic_Y)
+    forest_fit, test_y_predicted = RandomForestmodel(titanic_X, titanic_Y, titanic_test_X)
     
     importances = forest_fit.feature_importances_
     print(importances)
