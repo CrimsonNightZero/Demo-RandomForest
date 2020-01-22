@@ -22,8 +22,14 @@ def loading_data():
     
     return titanic_train, titanic_test, submit
 
-# 填補遺漏值
-def fill_values(data):
+#取得遺失資料筆數
+def get_miss_count(data):
+    missing = data.isnull().sum()
+    missing = missing[missing>0]
+    print(missing)
+    
+# 填補中值
+def fill_median(data):
     median = np.nanmedian(data)
     data.fillna(median, inplace=True)
     return data
@@ -32,6 +38,8 @@ def fill_values(data):
 def value_encoder(data):
     label_encoder = preprocessing.LabelEncoder()
     data = label_encoder.fit_transform(data)
+    # data = pd.get_dummies(data)
+
     return data
 
 # 量化區間
@@ -43,63 +51,69 @@ def normalize(data, data_key):
 def Ticket_process(data):
     new = list()
     for x in data:
-        new.append(x.split(" ")[-1])
+        new.append(x.split(" ")[0])
+    return pd.DataFrame(new)
+
+def Name_process(data):
+    new = list()
+    for x in data:
+        new.append(x.split(",")[1].split(".")[0])
     return pd.DataFrame(new)
 
 # 資料預處理
-def data_processing(titanic_train, titanic_test):
-    titanic_train["Age"] = fill_values(titanic_train["Age"])
-    titanic_test["Age"] = fill_values(titanic_test["Age"])
+def data_processing(titanic_data):
+    # titanic_data["Age"] = fill_median(titanic_data["Age"])
     
-    titanic_train["Sex"] = value_encoder(titanic_train["Sex"])
-    titanic_test["Sex"] = value_encoder(titanic_test["Sex"])
+    titanic_data["Sex"] = value_encoder(titanic_data["Sex"])
     
-    titanic_train["Cabin"] = np.where(titanic_train["Cabin"].isnull(), 0, 1)
-    titanic_test["Cabin"] = np.where(titanic_test["Cabin"].isnull(), 0, 1)
+    titanic_data["Cabin"] = np.where(titanic_data["Cabin"].isnull(), "No", titanic_data["Cabin"])
+    titanic_data["Cabin"] = value_encoder(titanic_data["Cabin"])
     
-    titanic_train["Embarked"] = np.where(titanic_train["Embarked"].isnull(), "N", titanic_train["Embarked"])
-    titanic_test["Embarked"] = np.where(titanic_test["Embarked"].isnull(), "N", titanic_test["Embarked"])
+    titanic_data["Embarked"] = np.where(titanic_data["Embarked"].isnull(), "N", titanic_data["Embarked"])
+    titanic_data["Embarked"] = value_encoder(titanic_data["Embarked"])
     
-    titanic_train["Embarked"] = value_encoder(titanic_train["Embarked"])
-    titanic_test["Embarked"] = value_encoder(titanic_test["Embarked"])
+    titanic_data["Ticket"] = Ticket_process(titanic_data["Ticket"])
+    titanic_data["Ticket"] = value_encoder(titanic_data["Ticket"])
     
-    titanic_train["Ticket"] = Ticket_process(titanic_train["Ticket"])
-    titanic_test["Ticket"] = Ticket_process(titanic_test["Ticket"])
+    titanic_data["Family"] = titanic_data["Name"].str.split(",",expand=True)[0]
+    titanic_data["Family"] = value_encoder(titanic_data["Family"])
     
-    titanic_train["Ticket"] = titanic_train["Ticket"].str.replace("LINE", "0")
- 
-    titanic_test["Fare"] = fill_values(titanic_test["Fare"])
-    # print(np.isnan(titanic_test["Fare"]).sum())
-    # print(np.isnan(titanic_test["Fare"]).sum())
-    titanic_train = normalize(titanic_train, ["Fare", "Pclass", "Age", "Parch", "SibSp", "Ticket"])
-    titanic_test = normalize(titanic_test, ["Fare", "Pclass", "Age", "Parch", "SibSp", "Ticket"])
+    titanic_data["Name"] = Name_process(titanic_data["Name"])
+    Age_Mean = titanic_data[['Name','Age']].groupby( by=['Name'] ).mean()
+    Age_Median = titanic_data[['Name','Age']].groupby( by=['Name'] ).median()
     
-    return titanic_train, titanic_test
+    Age_Mean.columns = ['Age Mean']
+    Age_Median.columns = ['Age Median']
+    Age_Mean.reset_index( inplace=True )
+    Age_Median.reset_index( inplace=True )
+    
+    Age_Mean['Name']=Age_Mean['Name'].astype('category').astype('str')
+    print(Age_Mean['Name'])
+    aaa
+    print(Age_Mean[['Name']],Age_Mean)
+    # print(titanic_data.loc[(titanic_data.Name=='Master'),'Age'])
+    titanic_data["Embarked"] = np.where(titanic_data["Name"].str.contains("Miss"), "N", titanic_data["Embarked"])
+    # titanic_data.loc[(titanic_data.Name=='Master'),'Age'] = Age_Mean.loc[Age_Mean.Name=='Master','Age Mean'][0]
+    # titanic_data.loc[(titanic_data.Name=='Miss'),'Age'] = Age_Mean.loc[Age_Mean.Name=='Miss','Age Mean'][1]
+    # titanic_data.loc[(titanic_data.Name=='Mr'),'Age'] = Age_Mean.loc[Age_Mean.Name=='Mr','Age Mean'][2]
+    # titanic_data.loc[(titanic_data.Name=='Mrs'),'Age'] = Age_Mean.loc[Age_Mean.Name=='Mrs','Age Mean'][3]
+    aa
+    titanic_data["Embarked"] = np.where(titanic_data["Name"].str.contains("Miss"), "N", titanic_data["Embarked"])
+    titanic_data["Name"] = value_encoder(titanic_data["Name"])
+    
+    titanic_data["Fare"] = fill_median(titanic_data["Fare"])
+    titanic_data = normalize(titanic_data, titanic_data.columns.drop('Survived').drop('PassengerId'))
+    
+    return titanic_data
 
 # 建立訓練與測試資料
-def data_split(titanic_train, titanic_test):
-    titanic_X = pd.DataFrame([titanic_train["Pclass"],
-                             titanic_train["Sex"],
-                             titanic_train["Age"],
-                              titanic_train["Fare"],
-                              titanic_train["Embarked"],
-                              titanic_train["Cabin"],
-                               titanic_train["Parch"],
-                              titanic_train["SibSp"],
-                              titanic_train["Ticket"]
-    ]).T   
-                     
-    titanic_test_X = pd.DataFrame([titanic_test["Pclass"],
-                             titanic_test["Sex"],
-                             titanic_test["Age"],
-                             titanic_test["Fare"],
-                              titanic_test["Embarked"],
-                             titanic_test["Cabin"],
-                              titanic_test["Parch"],
-                              titanic_test["SibSp"],
-                             titanic_test["Ticket"]
-    ]).T
+def data_split(titanic_data):
+    titanic_train = titanic_data[ pd.notnull(titanic_data.Survived) ]
+    titanic_test = titanic_data[ pd.isnull(titanic_data.Survived) ]
     
+    titanic_X = titanic_train.drop(['PassengerId','Survived'], axis=1)
+    titanic_test_X = titanic_test.drop(['PassengerId','Survived'], axis=1)
+    # titanic_X=titanic_train[]
     titanic_Y = titanic_train["Survived"]
     
     return titanic_X, titanic_Y, titanic_test_X
@@ -117,7 +131,7 @@ def RandomForestmodel(titanic_X, titanic_Y, titanic_test_X):
     
     return forest_fit, test_y_predicted
 
-#輸出預測資料
+# 輸出預測資料
 def output_file(test_y_predicted):
     submit_data = r'gender_submission.csv'
     
@@ -127,19 +141,32 @@ def output_file(test_y_predicted):
     
     return submit
 
+# 重點特徵數
+def features_reduced(forest_fit, titanic_X, titanic_test_X):
+    from sklearn.feature_selection import SelectFromModel
+    model = SelectFromModel(forest_fit, prefit=True)
+    n_features = model.transform(titanic_X).shape[1]
+    titanic_X_reduced = model.transform(titanic_X)
+    titanic_test_reduced = model.transform(titanic_test_X)
+    print(titanic_X_reduced.shape)
+    print(titanic_test_reduced.shape)
+    
 if __name__ == '__main__':
     titanic_train, titanic_test, submit = loading_data()
+    titanic_data = titanic_train.append(titanic_test)
+    get_miss_count(titanic_data)
     
-    titanic_train, titanic_test = data_processing(titanic_train, titanic_test)
-    
-    titanic_X, titanic_Y, titanic_test_X = data_split(titanic_train, titanic_test)
+    titanic_data = data_processing(titanic_data)
+    titanic_X, titanic_Y, titanic_test_X = data_split(titanic_data)
     forest_fit, test_y_predicted = RandomForestmodel(titanic_X, titanic_Y, titanic_test_X)
-    
     importances = forest_fit.feature_importances_
-    print(importances)
+
+    Feature_Rank = pd.DataFrame( { 'Feature_Name':titanic_X.columns, 'Importance':importances } )
+        
+    print(Feature_Rank)
     print( f'預測結果：' )
     print(forest_fit.oob_score_)
-    
+    features_reduced(forest_fit, titanic_X, titanic_test_X)
     output_file(test_y_predicted)
 
     # accuracy = metrics.accuracy_score(titanic_test_y, test_y_predicted)
