@@ -82,8 +82,6 @@ def Age_process(titanic_data):
     Age_Mean.reset_index( inplace=True )
     Age_Median.reset_index( inplace=True )
     
-    Age_Mean['Name'] = Age_Mean['Name'].str.strip()
-    
     for index, name in enumerate(Age_Mean['Name']):
         titanic_data.loc[(( titanic_data['Name']==name )&( titanic_data["Age"].isnull() )),'Age'] = Age_Mean.loc[ Age_Mean['Name']==name,'Age Mean' ][index]
     
@@ -120,6 +118,7 @@ def data_processing(titanic_data):
 
     titanic_data["Fare"] = np.where(titanic_data["Fare"] > 0 | titanic_data["Fare"].isnull(), np.log10(titanic_data["Fare"]), titanic_data["Fare"])
     titanic_data["Fare"] = fill_median(titanic_data["Fare"])
+    titanic_data["Single"] = np.where((titanic_data["Parch"] == 0) & (titanic_data["SibSp"] == 0), 0, 1)
     get_miss_count(titanic_data)
     
     for col in ["Sex", "Embarked", "Ticket", "Family", "Cabin", "Name"]:
@@ -177,7 +176,9 @@ def features_reduced(forest_fit, titanic_X, titanic_test_X):
 if __name__ == '__main__':
     titanic_train, titanic_test, submit = loading_data()
     titanic_data = titanic_train.append(titanic_test)
-    
+    print(titanic_train.describe())
+    print(titanic_test.describe())
+
     get_miss_count(titanic_train)
     get_miss_count(titanic_test)
     
