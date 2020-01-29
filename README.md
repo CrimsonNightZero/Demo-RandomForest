@@ -13,4 +13,4 @@ Program summary
 * Data : https://www.kaggle.com/c/titanic/data
 
 * Kaggle Score
-* ![Score](./Figures/Score.png)
+* ![Score](./Figures/Score.PNG)
