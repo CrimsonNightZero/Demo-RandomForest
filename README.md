@@ -15,3 +15,6 @@ Program summary
 
 * Kaggle Score
 * ![Score](./Figures/Score.PNG)
+
+* Kaggle Rank
+* ![Rank](./Figures/Rank.PNG)
