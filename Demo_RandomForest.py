@@ -133,8 +133,8 @@ def data_split(titanic_data):
     titanic_train = titanic_data[ pd.notnull(titanic_data.Survived) ]
     titanic_test = titanic_data[ pd.isnull(titanic_data.Survived) ]
     
-    titanic_X = titanic_train.drop(['PassengerId','Survived','Name','Family'], axis=1)
-    titanic_test_X = titanic_test.drop(['PassengerId','Survived','Name','Family'], axis=1)
+    titanic_X = titanic_train.drop(['PassengerId','Survived','Family'], axis=1)
+    titanic_test_X = titanic_test.drop(['PassengerId','Survived','Family'], axis=1)
 
     titanic_Y = titanic_train["Survived"]
     
@@ -170,14 +170,25 @@ def features_reduced(forest_fit, titanic_X, titanic_test_X):
     # n_features = model.transform(titanic_X).shape[1]
     titanic_X_reduced = model.transform(titanic_X)
     titanic_test_reduced = model.transform(titanic_test_X)
+ 
     print(titanic_X_reduced.shape)
     print(titanic_test_reduced.shape)
+    return  titanic_X_reduced
+
+def test():
+    titanic_train["Fare"]=np.where(titanic_train["Fare"] > 0, np.log10(titanic_train["Fare"]), 0)
+    for x in range(10):
+        groups = titanic_train.groupby(['Survived', pd.cut(titanic_train.Fare, x+1)])
+        print(groups.size().unstack())
+
+    print(titanic_train[['Sex','Survived']].groupby(['Sex','Survived']).size().reset_index(name="Freq"))
     
 if __name__ == '__main__':
     titanic_train, titanic_test, submit = loading_data()
     titanic_data = titanic_train.append(titanic_test)
-    print(titanic_train.describe())
-    print(titanic_test.describe())
+ 
+    # print(titanic_train.describe())
+    # print(titanic_test.describe())
 
     get_miss_count(titanic_train)
     get_miss_count(titanic_test)
